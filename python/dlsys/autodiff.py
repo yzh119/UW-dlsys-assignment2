@@ -1,3 +1,4 @@
+# %load python/dlsys/autodiff.py
 """ library to take autodiff and execute a computation graph """
 from __future__ import absolute_import
 
@@ -152,7 +153,8 @@ class AddOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """Need to handle input_vals[0].shape != input_vals[1].shape"""
-        """TODO: Your code here"""
+        assert input_shapes[0] == input_shapes[1]
+        return input_shapes[0]
 
 
 class AddByConstOp(Op):
@@ -175,7 +177,7 @@ class AddByConstOp(Op):
         return [output_grad]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return input_shapes[0]
 
 
 class MulOp(Op):
@@ -208,8 +210,9 @@ class MulOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """Need to handle input_vals[0].shape != input_vals[1].shape"""
-        """TODO: Your code here"""
-
+        assert input_shapes[0] == input_shapes[1]
+        return input_shapes[0]
+        
 
 class MulByConstOp(Op):
     def __call__(self, node_A, const_val):
@@ -231,7 +234,7 @@ class MulByConstOp(Op):
         return [node.const_attr * output_grad]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return input_shapes[0]
 
 
 class MatMulOp(Op):
@@ -299,8 +302,8 @@ class MatMulOp(Op):
         return [lhs_grad, rhs_grad]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
-
+        assert input_shapes[0].shape[1] == input_shapes[1].shape[0]
+        return (input_shapes[0].shape[0], input_shapes[1].shape[1])
 
 class PlaceholderOp(Op):
     def __call__(self):

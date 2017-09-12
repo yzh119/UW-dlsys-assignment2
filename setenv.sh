@@ -1,0 +1,1 @@
+export PYTHONPATH="${PYTHONPATH}:/home/v-ziye/assignment2/python"
