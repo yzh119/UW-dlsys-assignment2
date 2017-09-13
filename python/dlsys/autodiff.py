@@ -341,7 +341,7 @@ class ZerosLikeOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """If input_shape is a vector, simpler to return (1,)"""
-        """TODO: Your code here"""
+        return input_shapes[0]
 
 
 class OnesLikeOp(Op):
@@ -364,7 +364,7 @@ class OnesLikeOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """If input_shape is a vector, simpler to return (1,)"""
-        """TODO: Your code here"""
+        return input_shapes[0]
 
 
 class ReduceSumAxisZeroOp(Op):
@@ -393,7 +393,9 @@ class ReduceSumAxisZeroOp(Op):
         e.g. (3,4,5)->(4,5)
         for vector, simpler to do (3,)->(1,)
         """
-        """TODO: Your code here"""
+        if len(input_shapes[0]) == 1:
+            return (1,)
+        return input_shapes[0][1:]
 
 
 class BroadcastToOp(Op):
@@ -419,7 +421,7 @@ class BroadcastToOp(Op):
         return [grad_A, grad_B]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return broadcast_rule(input_shapes[0], input_shapes[1])
 
 
 def softmax_func(y):
@@ -455,7 +457,7 @@ class SoftmaxCrossEntropyOp(Op):
         return [grad_A, grad_B]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return (1,)
 
 
 class SoftmaxOp(Op):
@@ -478,7 +480,8 @@ class SoftmaxOp(Op):
         raise NotImplementedError
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return input_shapes[0]
+
 
 
 class ReluOp(Op):
@@ -499,7 +502,7 @@ class ReluOp(Op):
         return [relu_gradient_op(node.inputs[0], output_grad)]
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        return input_shapes[0]
 
 
 class ReluGradientOp(Op):
@@ -522,7 +525,9 @@ class ReluGradientOp(Op):
         raise NotImplementedError
 
     def infer_shape(self, node, input_shapes):
-        """TODO: Your code here"""
+        assert input_shapes[0] == input_shapes[1]
+        return input_shapes[0]
+
 
 
 # Create global singletons of operators.
@@ -573,7 +578,19 @@ class Executor(object):
         ----------
         feed_shapes: node->shapes mapping for feed_dict nodes.
         """
-        """TODO: Your code here"""
+        node_to_shape_map = {}
+        for node, shape in feed_shapes.items():
+            node_to_shape_map[node] = shape
+
+        for node in self.topo_order:
+            if node in node_to_shape_map:
+                continue
+            input_shades = [node_to_shape_map[n] for n in node.inputs]
+            node_to_shape_map[node] = node.op.infer_shape(node, input_shades)
+
+        self.node_to_shape_map = node_to_shape_map
+
+
 
     def memory_plan(self, feed_shapes):
         """Allocates ndarray.NDArray for every node except feed_dict nodes.
@@ -592,7 +609,45 @@ class Executor(object):
         ----------
         feed_shapes: node->shapes mapping for feed_dict nodes.
         """
-        """TODO: Your code here"""
+
+        shape_to_ndarray = {}
+        node_to_arr_map = {}
+        
+        for node, shape in self.node_to_shape_map:
+            if node not in feed_shapes:
+                shape_to_ndarray[shape] = []
+
+        def get_mem(shape):
+            if len(shape_to_ndarray[shape]) > 0:
+                return shape_to_ndarray[shape].pop()
+            return ndarray.empty(shape, ctx=self.ctx)
+
+        def free_mem(arr):
+            if arr is not None:
+                shape_to_ndarray[arr.shape].append(arr)
+        
+        out_deg = {}
+        for node in self.topo_order:
+            out_deg[node] = 0
+        for node in self.topo_order:
+            for input_node in node.inputs:
+                out_deg[input_node] += 1
+
+        for node in self.topo_order:
+            if node in feed_shapes:
+                continue
+
+            node_to_arr_map[node] = get_mem(node.shape)
+
+            for input_node in node.inputs:
+                out_deg[input_node] -= 1
+                if out_deg[input_node] == 0:
+                    if input_node in self.eval_node_list:
+                        continue
+                    free_mem(node_to_arr_map.get(input_node))
+
+        self.node_to_arr_map = node_to_arr_map
+
 
     def run(self, feed_dict, convert_to_numpy_ret_vals=False):
         """
