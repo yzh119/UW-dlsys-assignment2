@@ -1,0 +1,17 @@
+test_gpu_op.test_array_set ... ok
+test_gpu_op.test_broadcast_to ... ok
+test_gpu_op.test_reduce_sum_axis_zero ... ok
+test_gpu_op.test_matrix_elementwise_add ... ok
+test_gpu_op.test_matrix_elementwise_add_by_const ... ok
+test_gpu_op.test_matrix_elementwise_multiply ... ok
+test_gpu_op.test_matrix_elementwise_multiply_by_const ... ok
+test_gpu_op.test_matrix_multiply ... ok
+test_gpu_op.test_relu ... ok
+test_gpu_op.test_relu_gradient ... ok
+test_gpu_op.test_softmax ... ok
+test_gpu_op.test_softmax_cross_entropy ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 3.383s
+
+OK

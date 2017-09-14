@@ -265,11 +265,11 @@ int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
 int DLGpuMatrixMultiply(const DLArrayHandle matA, bool transposeA,
         const DLArrayHandle matB, bool transposeB,
         DLArrayHandle matC) {
-	// Column major!
+	// NOTE: Column major!
 	assert(matA->ndim == 2);
 	assert(matB->ndim == 2);
 	assert(matC->ndim == 2);
-	int m = matA->shape[transposeA], k = matA->shape[!transposeA], n = matB->shape[!transposeB];
+	int m = matB->shape[!transposeB], k = matB->shape[transposeB], n = matA->shape[transposeA];
     static cublasHandle_t handle;
     cublasCreate(&handle);
     cublasOperation_t transa = transposeA? CUBLAS_OP_T: CUBLAS_OP_N;
@@ -279,13 +279,13 @@ int DLGpuMatrixMultiply(const DLArrayHandle matA, bool transposeA,
     const float *B = (const float *) matB->data;
     float *C = (float *) matC->data;
     cublasSgemm(handle,
-    	transa, transb,
+    	transb, transa,
     	m, n, k,
     	&alpha,
-    	A, matA->shape[0],
-    	B, matB->shape[0],
+    	B, matB->shape[1],
+    	A, matA->shape[1],
     	&beta,
-    	C, matC->shape[0]
+    	C, matC->shape[1]
     	);
     cublasDestroy(handle);
     return 0;
