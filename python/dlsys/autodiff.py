@@ -210,6 +210,10 @@ class MulOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """Need to handle input_vals[0].shape != input_vals[1].shape"""
+        if input_shapes[0] == (1,):
+            return input_shapes[1]
+        elif input_shapes[1] == (1,):
+            return input_shapes[0]
         assert input_shapes[0] == input_shapes[1]
         return input_shapes[0]
         
@@ -302,8 +306,8 @@ class MatMulOp(Op):
         return [lhs_grad, rhs_grad]
 
     def infer_shape(self, node, input_shapes):
-        assert input_shapes[0].shape[1] == input_shapes[1].shape[0]
-        return (input_shapes[0].shape[0], input_shapes[1].shape[1])
+        assert input_shapes[0][not node.matmul_attr_trans_A] == input_shapes[1][node.matmul_attr_trans_B]
+        return (input_shapes[0][node.matmul_attr_trans_A], input_shapes[1][not node.matmul_attr_trans_B])
 
 class PlaceholderOp(Op):
     def __call__(self):
@@ -612,8 +616,8 @@ class Executor(object):
 
         shape_to_ndarray = {}
         node_to_arr_map = {}
-        
-        for node, shape in self.node_to_shape_map:
+
+        for node, shape in self.node_to_shape_map.items():
             if node not in feed_shapes:
                 shape_to_ndarray[shape] = []
 
@@ -637,7 +641,7 @@ class Executor(object):
             if node in feed_shapes:
                 continue
 
-            node_to_arr_map[node] = get_mem(node.shape)
+            node_to_arr_map[node] = get_mem(self.node_to_shape_map[node])
 
             for input_node in node.inputs:
                 out_deg[input_node] -= 1
